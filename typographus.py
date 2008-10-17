@@ -190,6 +190,9 @@ class Typographus:
         
         any_quote = u'(?:%s|%s|%s|%s|&quot;|")' % (sym['lquote'], sym['rquote'], sym['lquote2'], sym['rquote2'])
         
+        brace_open = ur'(?:\(|\[|\{)'
+        brace_close = ur'(?:\)|\]|\})'
+
         rules_strict = [
         # Много пробелов или табуляций -> один пробел
         {"pat": u'\s+', "rep": u' '},
@@ -198,83 +201,90 @@ class Typographus:
         ]
         
 
-        rules_symbols = [
-            #Лишние знаки.
-            #TODO: сделать красиво
-            {"pat": u'([^!])!!([^!])', "rep": u'\g<1>!\g<2>'},        
-            {"pat": u'([^?])\?\?([^?])', "rep": u'\g<1>?\g<2>'},
-            {"pat": u'(\w);;(\s)', "rep": u'\g<1>;\g<2>'},
-            {"pat": u'(\w)\.\.(\s)', "rep": u'\g<1>.\g<2>'},
-            {"pat": u'(\w),,(\s)', "rep": u'\g<1>,\g<2>'},
-            {"pat": u'(\w)::(\s)', "rep": u'\g<1>:\g<2>'},
-                    
-            {"pat": u'(!!!)!+', "rep": u'\g<1>'},
-            {"pat": u'(\?\?\?)\?+', "rep": u'\g<1>'},
-            {"pat": u'(;;;);+', "rep": u'\g<1>'},
-            {"pat": u'(\.\.\.)\.+', "rep": u'\g<1>'},
-            {"pat": u'(,,,),+', "rep": u'\g<1>'},
-            {"pat": u'(:::):+\s', "rep": u'\g<1>'},
-        
-            #Занятная комбинация
-            {"pat": u'!\?', "rep": u'?!'},
-            #Знаки (c), (r), (tm)
-            {"pat": u'\((c|с)\)', "rep": sym['copy'], "mod": re.I},
-            {"pat": u'\(r\)', "rep": sym['reg'], "mod": re.I},
-            {"pat": u'\(tm\)', "rep": sym['trade'], "mod": re.I},
-        
-            # От 2 до 5 знака точки подряд - на знак многоточия (больше - мб авторской задумкой).
-            # {"pat": hellip, "rep": sym['hellip']},
+        rules_symbols = (
+
+            # лишние знаки.
+            (r'!!!+', r'!!!'),
+            (r'(?<!!)!!(?!!)', '!'),
+
+            (r'\?\?\?+', r'???'),
+            (r'(?<!\?)\?\?(?!\?)', r'?'),
             
-            #  автор неправ. скорее всего малолетки балуются
+            (r';+', r';'),
+            (r':+', r':'),
+            (r',+', r','),
+            
+            (r'\+\++', '++'),
+            (r'--+', '--'),
+            (r'===+', '==='),
+            
+            # занятная комбинация
+            (ur'!\?', u'?!'),
+            
+            # знаки (c), (r), (tm)
+            (ur'\([cс]\)', sym['copy'], re.I), # русский и латинский варианты
+            (ur'\(r\)', sym['reg'], re.I),
+            (ur'\(tm\)', sym['trade'], re.I),
+        
+            # автор неправ. скорее всего малолетки балуются
             (ur'\.\.+', sym['hellip']),
             
-            #Спецсимволы для 1/2 1/4 3/4
-
+            # спецсимволы для 1/2 1/4 3/4
             (ur'\b1/2\b', sym['1/2']),
             (ur'\b1/4\b', sym['1/4']),
             (ur'\b3/4\b', sym['3/4']),
-            
-            
 
-            #LО'Лайт
-            {"pat": u"([a-zA-Z])'([а-яА-Я])", "rep": u'\g<1>%s\g<2>' % sym['rsquo'], "mod": re.I},
-        
-            {"pat": u"'", "rep": sym['apos']}, #str_replace?
-      
+            # какая-то муть с апострофами
+            (ur"(?<=%s)'(?=%s)" % (word, word), sym['rsquo']),
+            (ur"'", sym['apos']),
+            
+            
             # Размеры 10x10, правильный знак + убираем лишние пробелы
-            {"pat": u'(\d+)\s{0,}?[x|X|х|Х|*]\s{0,}(\d+)', "rep": u'\g<1>%s\g<2>' % sym['multiply']},
-        
-            #+-
-            {"pat": u'([^\+]|^)\+-', "rep": u'\g<1>%s' % sym['plusmn']},
+            # {"pat": u'(\d+)\s{0,}?[x|X|х|Х|*]\s{0,}(\d+)', "rep": u'\g<1>%s\g<2>' % sym['multiply']},
+            (ur'(?<=\d)\s*[x|X|х|Х]\s*(?=\d)', sym['multiply']),
+            
+            # +-
+            # {"pat": u'([^\+]|^)\+-', "rep": u'\g<1>%s' % sym['plusmn']},
+            (r'\+-', sym['plusmn']),
         
            #Стрелки
-           {"pat": u'([^-]|^)->', "rep": u'\g<1>%s' % sym['rarr']},
-           {"pat": u'<-([^-]|$)', "rep": u'%s\g<1>' % sym['larr']}
-        ]
+           # {"pat": u'([^-]|^)->', "rep": u'\g<1>%s' % sym['rarr']},
+           # {"pat": u'<-([^-]|$)', "rep": u'%s\g<1>' % sym['larr']}
+           (r'<-+', sym['larr']),
+           (r'-+>', sym['rarr']),
+        )
 
 
-        rules_quotes = [
-            # Разносим неправильные кавычки
-           {"pat": u'([^"]\w+)"(\w+)"', "rep": u'\g<1> "\g<2>"'},
-           {"pat": u'"(\w+)"(\w+)', "rep": u'"\g<1>" \g<2>'},
-           #Превращаем кавычки в ёлочки. Двойные кавычки склеиваем.
-           #((?:«|»|„|“|&quot;|"))((?:\.{3,5}|[a-zA-Zа-яА-Я_]|\n))
-           {"pat": u"(%s)(%s)" % (any_quote, phrase_begin), "rep": u'%s\g<2>' % sym['lquote']},
-           
-           #((?:(?:\.{3,5}|[a-zA-Zа-яА-Я_])|[0-9]+))((?:«|»|„|“|&quot;|"))
-           {"pat": "((?:%s|(?:[0-9]+)))(%s)" % (phrase_end, any_quote), "rep": u'\g<1>%s' % sym['rquote']},
-           
-           {"pat": sym['rquote'] + any_quote, "rep": sym['rquote']+sym['rquote']},
-           {"pat": any_quote + sym['lquote'], "rep": sym['lquote']+sym['lquote']}
-        ]
+        rules_quotes = (
+            
+            # разносим неправильные кавычки
+            #(ur'([^"]\w+)"(\w+)"', u'\g<1> "\g<2>"'),
+            (ur'([^"]\S+)"(\S+)"', ur'\1 "\2"'),
+            (ur'"(\S+)"(\S+)', ur'"\1" \2'),
+            
+            # превращаем кавычки в ёлочки. Двойные кавычки склеиваем.
+            # ((?:«|»|„|“|&quot;|"))((?:\.{3,5}|[a-zA-Zа-яА-Я_]|\n))
+            (u"(%s)(%s)" % (any_quote, phrase_begin), u'%s\g<2>' % sym['lquote']),
+            
+            # ((?:(?:\.{3,5}|[a-zA-Zа-яА-Я_])|[0-9]+))((?:«|»|„|“|&quot;|"))
+            (ur"((?:%s|(?:[0-9]+)))(%s)" % (phrase_end, any_quote), u'\g<1>%s' % sym['rquote']),
+            
+            (sym['rquote'] + any_quote, sym['rquote']+sym['rquote']),
+            (any_quote + sym['lquote'], sym['lquote']+sym['lquote']),
+            
+        )
         
-        rules_braces = [
-         #Оторвать скобку от слова
-         {"pat": u'(%s)\(' % word, "rep": u'\g<1> ('},
-          #Слепляем скобки со словами
-         {"pat": u'\(\s', "rep": u'(', "mod": re.S},
-         {"pat": u'\s\)', "rep": u')', "mod": re.S},
-         ]
+        rules_braces = (
+            
+            # оторвать скобку от слова
+            (ur'(?<=\S)(?=%s)' % brace_open, ' '),
+            (ur'(?<=%s)(?=\S)' % brace_close, ' '),
+            
+            # слепляем скобки со словами
+            (ur'(?<=%s)\s' % brace_open, ''),
+            (ur'\s(?=%s)' % brace_close, ''),
+            
+        )
 
         rules_main = [
             
@@ -290,22 +300,15 @@ class Typographus:
             # оторвать тире от слова
             (r'(?<=\w)-\s+', ' - '),
             
-            
-         # Оторвать тире от слова
-         # {"pat": u'(\w)- ', "rep": u'\g<1> - '},
-
-         #Знаки с предшествующим пробелом… нехорошо! пока не работает @todo переработать регулярку
-       #  {"pat": u'(%s)+(%s|%s)' % (phrase_end, punctuation, sym['hellip']), "rep": u'\g<1>\g<2>'},
-       #  {"pat": u'(%s)(%s)' % (punctuation, phrase_begin), "rep": u'\g<1> \g<2>'},
+                     #Знаки с предшествующим пробелом… нехорошо! пока не работает @todo переработать регулярку
+                   #  {"pat": u'(%s)+(%s|%s)' % (phrase_end, punctuation, sym['hellip']), "rep": u'\g<1>\g<2>'},
+                   #  {"pat": u'(%s)(%s)' % (punctuation, phrase_begin), "rep": u'\g<1> \g<2>'},
       
-          #Для точки отдельно
-          # {"pat": u'(\w)\s(?:\.)(\s|$)', "rep": u'\g<1>.\g<2>'},
+                      #Для точки отдельно
+                      # {"pat": u'(\w)\s(?:\.)(\s|$)', "rep": u'\g<1>.\g<2>'},
 
-              #Неразрывные названия организаций и абревиатуры форм собственности
-              #  почему не один &nbsp;?
-              # ! названия организаций тоже могут содержать пробел !
-              # {"pat": u'(%s)\s+"(.+?)"' % abbr, "rep": u'%s\g<1> "\g<2>"%s' % (sym['rnowrap'], sym['lnowrap'])},
-              (ur'(%s)\s+"([.+?]+)"' % abbr, nowrap(ur'\1 "\2"')),
+            # неразрывные названия организаций и абревиатуры форм собственности
+            (ur'(%s)\s+"([^"]+)"' % abbr, nowrap(ur'\1 "\2"')),
           
           #Нельзя отрывать сокращение от относящегося к нему слова.
           #Например: тов. Сталин, г. Воронеж
@@ -362,9 +365,7 @@ class Typographus:
         for rule_set in (rules_strict, rules_main, rules_symbols, rules_braces, rules_quotes):
             string = self.apply_rules(rule_set, string)
         
-        
-        
-        #Вложенные кавыки.
+        # вложенные кавычки
         i = 0
         lev = 5
         matchLeftQuotes = re.compile(u'«(?:[^»]*?)«')#мачит две соседние левые елочки
@@ -383,4 +384,7 @@ class Typographus:
         
         string = string.replace(u'<nowrap>', sym['lnowrap']).replace(u'</nowrap>', sym['rnowrap'])
         
-        return string
+        return string.strip()
+
+def typo(string):
+    return Typographus().process(string)
