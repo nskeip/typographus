@@ -96,7 +96,7 @@ class Typographus:
         return pattern
     
     
-    def removeRedundantBlocks(self, str):
+    def removeRedundantBlocks(self, string):
         blocks = {}
         def replace(m):
             value = m.group()
@@ -109,34 +109,38 @@ class Typographus:
         
         pattern = self.getSafeBlockPattern() 
        
-        str = re.compile(pattern, re.U).sub(replace, str);
+        string = re.compile(pattern, re.U).sub(replace, string);
         
-        str = re.compile(ur"</?.*?/?>", re.U).sub(replace, str);
+        string = re.compile(ur"</?.*?/?>", re.U).sub(replace, string);
         
-        return {"replaced": str, "blocks": blocks}
+        return {"replaced": string, "blocks": blocks}
     
     
-    def return_blocks_to_string(self, str, blocks):
+    def return_blocks_to_string(self, string, blocks):
         for key, value in blocks.items():
-            str = str.replace(key, value)
-        
-        return str
+            string = string.replace(key, value)
+        return string
         
         
 
-    def process(self, str):
-        value = self.removeRedundantBlocks(str)
+    def process(self, string):
         
-        str = value["replaced"]
+        if type(string) is not unicode:
+            raise Exception, u'only unicode instances allowed for Typographus'
+        
+        
+        value = self.removeRedundantBlocks(string)
+        
+        string = value["replaced"]
         blocks = value["blocks"]
       
-        str = self.typo_text(str)
+        string = self.typo_text(string)
             
-        str = self.return_blocks_to_string(str, blocks)
-        return str
+        string = self.return_blocks_to_string(string, blocks)
+        return string
       
                
-    def apply_rules(self, rules, str):
+    def apply_rules(self, rules, string):
         for rule in rules:
             mod = re.X
             if type(rule) is dict:
@@ -147,13 +151,18 @@ class Typographus:
                 pat, rep = rule[:2]
                 if len(rule) == 3:
                     mod = rule[2]
+            else:
+                raise Exception, 'unknown rule type: %s' % repr(rule)
             mod += re.UNICODE
-            str = re.compile(pat, mod).sub(rep, str);
-        return str
+            try:
+                string = re.compile(pat, mod).sub(rep, string)
+            except UnicodeDecodeError:
+                print type(string), repr(pat)
+        return string
             
     
     def typo_text(self, string):
-        
+                
         def nowrap(string):
             return u'<nowrap>%s</nowrap>' % string
             return sym['lnowrap'] + string + sym['rnowrap']
@@ -181,25 +190,27 @@ class Typographus:
         #Предлоги и союзы
         prepos = u'а|в|во|вне|и|или|к|о|с|у|о|со|об|обо|от|ото|то|на|не|ни|но|из|изо|за|уж|на|по|под|подо|пред|предо|'        
         prepos +=u'про|над|надо|как|без|безо|что|да|для|до|там|ещё|их|или|ко|меж|между|перед|передо|около|через|сквозь|для|при|я'
-        metrics = u'мм|см|м|км|г|кг|б|кб|мб|гб|dpi|px';
+        metrics = u'мм|см|м|км|г|кг|б|кб|мб|гб|dpi|px'
         
-        shortages = u'г|гр|тов|пос|c|ул|д|пер|м';
-
-        money = u'руб\.|долл\.|евро|у\.е\.';
-        counts = u'млн\.|тыс\.';
+        shortages = u'г|гр|тов|пос|c|ул|д|пер|м'
+        
+        money = u'руб\.|долл\.|евро|у\.е\.'
+        counts = u'млн\.|тыс\.'
         
         any_quote = u'(?:%s|%s|%s|%s|&quot;|")' % (sym['lquote'], sym['rquote'], sym['lquote2'], sym['rquote2'])
         
         brace_open = ur'(?:\(|\[|\{)'
         brace_close = ur'(?:\)|\]|\})'
 
-        rules_strict = [
-        # Много пробелов или табуляций -> один пробел
-        {"pat": u'\s+', "rep": u' '},
-        # Запятые после «а» и «но». Если уже есть — не ставим.
-        {"pat": u'([^,])\s(а|но)\s', "rep": u'\g<1>, \g<2> '}
-        ]
-        
+        rules_strict = (
+            
+            # много пробелов или табуляций -> один пробел
+            (ur'\s+', u' '),
+            
+            # запятые после "а" и "но"
+            (ur'(?<=[^,])(?=\s(?:а|но)\s)', ur','),
+            
+        )
 
         rules_symbols = (
 
@@ -239,19 +250,19 @@ class Typographus:
             (ur"'", sym['apos']),
             
             
-            # Размеры 10x10, правильный знак + убираем лишние пробелы
-            # {"pat": u'(\d+)\s{0,}?[x|X|х|Х|*]\s{0,}(\d+)', "rep": u'\g<1>%s\g<2>' % sym['multiply']},
+            # размеры 10x10, правильный знак + убираем лишние пробелы
             (ur'(?<=\d)\s*[x|X|х|Х]\s*(?=\d)', sym['multiply']),
             
             # +-
-            # {"pat": u'([^\+]|^)\+-', "rep": u'\g<1>%s' % sym['plusmn']},
             (r'\+-', sym['plusmn']),
-        
-           #Стрелки
-           # {"pat": u'([^-]|^)->', "rep": u'\g<1>%s' % sym['rarr']},
-           # {"pat": u'<-([^-]|$)', "rep": u'%s\g<1>' % sym['larr']}
-           (r'<-+', sym['larr']),
-           (r'-+>', sym['rarr']),
+           
+            (r'(?<=\S)\s+(?=-+>+|<+-+)', sym['nbsp']), # неразрывные пробелы перед стрелками
+            (r'(-+>+|<+-+)\s+(?=\S)', r'\1' + sym['nbsp']), # неразрывные пробелы после стрелок
+
+            # стрелки
+            (r'<+-+', sym['larr']),
+            (r'-+>+', sym['rarr']),
+           
         )
 
 
@@ -286,7 +297,7 @@ class Typographus:
             
         )
 
-        rules_main = [
+        rules_main = (
             
             # нахер пробелы перед знаками препинания
             (r'\s+(?=[\.,:;!\?])', ''),
@@ -360,7 +371,7 @@ class Typographus:
              # {"pat": u'([0-9]+)\s+%', "rep": u'\g<1>%'}
              {'pat': r'(?<=\d)\s+(?=%)', 'rep': ''}
 
-        ]
+        )
 
         for rule_set in (rules_strict, rules_main, rules_symbols, rules_braces, rules_quotes):
             string = self.apply_rules(rule_set, string)
@@ -368,6 +379,7 @@ class Typographus:
         # вложенные кавычки
         i = 0
         lev = 5
+        
         matchLeftQuotes = re.compile(u'«(?:[^»]*?)«')#мачит две соседние левые елочки
         matchRightQuotes = re.compile(u'»(?:[^«]*?)»')
         
@@ -375,12 +387,12 @@ class Typographus:
         replaceRightQuotes = re.compile(u'»([^«]*?)»')
         while  i<5 and matchLeftQuotes.match(string):
             i+=1
-            rep = u'«\g<1>%s\g<2>%s' % (sym['lquote2'], sym['rquote2'])
+            rep = u'%s\g<1>%s\g<2>%s' % (q['lq'], sym['lquote2'], sym['rquote2'])
             string = replaceOuterQuotes.sub(rep, string)
             i+=1
             while i<lev and matchRightQuotes.match(string):
                 i+=1
-                string = replaceRightQuotes.sub(sym['rquote2'] + u'\g<1>»', string);
+                string = replaceRightQuotes.sub(sym['rquote2'] + u'\g<1>%s' % q['rq'], string);
         
         string = string.replace(u'<nowrap>', sym['lnowrap']).replace(u'</nowrap>', sym['rnowrap'])
         

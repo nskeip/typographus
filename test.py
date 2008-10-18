@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import unittest
@@ -27,8 +27,10 @@ class TestPunctuation(unittest.TestCase):
         self.assert_typo(u'?', u'??')
     
     def testarrows(self):
-        self.assert_typo(u'&rarr;', u'----->')
-        self.assert_typo(u'&larr;', u'<-------')
+        self.assert_typo(u'&rarr;', u'----->>>')
+        self.assert_typo(u'&larr;', u'<<<-------')
+        self.assert_typo(u'сюда&nbsp;&larr;', u'сюда <<--')
+        self.assert_typo(u'туда&nbsp;&rarr;', u'туда ---->>>>>')
     
     def testmultiply(self):
         self.assert_typo(u'6&times;7', u'6x7')
