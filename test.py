@@ -10,15 +10,27 @@ class TestPunctuation(unittest.TestCase):
         self._typo = Typographus()
         
     def assert_typo(self, expect, input):
-        self.assertEqual(expect, self.typo(input))
+        try:
+            self.assertEqual(expect, self.typo(input))
+        except Exception, e:
+            print expect.encode('utf-8')
+            print self.typo(input).encode('utf-8')
+            raise e
     
     def typo(self, string):
         return self._typo.process(string)
-		
+	
+	def testsafeblocks(self):
+	    self.assert_typo(u'<code> -->> </code>', u'<code> -->> </code>')
+	
     def testmath(self):
         self.assert_typo(u'5+6&minus;7&plusmn;8', u'5+6-7+-8')
         self.assert_typo(u'===', u'============')
         self.assert_typo(u'++', u'+++++++++++')
+    
+    def testshortening(self):
+        self.assert_typo(u'тов.&nbsp;Сталин', u'тов Сталин')
+        self.assert_typo(u'1г. Воронеж', u'1г. Воронеж')
     
     def testrepeats(self):
         self.assert_typo(u'!!!', u'!!!!!!!!!!!!!!')
