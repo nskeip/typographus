@@ -31,6 +31,9 @@ class TestPunctuation(unittest.TestCase):
     def testshortening(self):
         self.assert_typo(u'тов.&nbsp;Сталин', u'тов Сталин')
         self.assert_typo(u'1г. Воронеж', u'1г. Воронеж')
+        self.assert_typo(u'стр.&nbsp;5', u'стр    5')
+        self.assert_typo(u'2008&nbsp;г.', u'2008 г')
+        self.assert_typo(u'25&nbsp;см', u'25  см.')
     
     def testrepeats(self):
         self.assert_typo(u'!!!', u'!!!!!!!!!!!!!!')
