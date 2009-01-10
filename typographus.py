@@ -97,7 +97,7 @@ brace_close = ur'(?:\)|\]|\})'
 
 def nowrap(string):
     return u'<nowrap>%s</nowrap>' % string
-    return sym['lnowrap'] + string + sym['rnowrap']
+    #return sym['lnowrap'] + string + sym['rnowrap']
 
 class Rule:
 
@@ -343,14 +343,16 @@ class Typographus:
                 return value
             
             key = u'<%s>' % (len(blocks))
-            blocks[key] = value;
-            return key;
+            blocks[key] = value
+            return key
         
         pattern = self.getSafeBlockPattern() 
        
-        string = re.compile(pattern, re.U).sub(replace, string);
+        #string = re.compile(pattern, re.U).sub(replace, string)
+        string = re.compile(pattern, re.U|re.S|re.I).sub(replace, string)
         
-        string = re.compile(ur"</?.*?/?>", re.U).sub(replace, string);
+        #string = re.compile(ur"</?.*?/?>", re.U).sub(replace, string)
+        string = re.compile(ur"</?.*?/?>", re.U|re.S|re.I).sub(replace, string)
         
         return {"replaced": string, "blocks": blocks}
     
