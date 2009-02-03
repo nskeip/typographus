@@ -23,38 +23,39 @@
 Я ищу людей для совместной работы!
 """
 
-import re
+import re, htmlentitydefs, unicodedata
 
 __all__ = ('Typographus', 'Rule', 'typo')
 
+def entity(name):
+    return unichr(htmlentitydefs.name2codepoint[name])
+
+
 sym = {
-    'nbsp': u'&nbsp;',
+    'nbsp': entity('nbsp'),
 
     'lnowrap': u'<span style="white-space: nowrap;">',
     'rnowrap': u'</span>',
 
-    'lquote': u'&laquo;',
-    'rquote': u'&raquo;',
-    'lquote2': u'„',
-    'rquote2': u'“',
-    'mdash': u'&mdash;',
-    'ndash': u'&ndash;',
-    'minus': u'&minus;', #соотв. по ширине символу +, есть во всех шрифтах
-
-    'hellip': u'&hellip;',
-    'copy': u'&copy;',
-    'trade': u'<sup>&trade;</sup>',
-    'apos': u'&#39;',   # см. http://fishbowl.pastiche.org/2003/07/01/the_curse_of_apos
-    'reg': u'<sup><small>&reg;</small></sup>',
-    'multiply': u'&times;',
-    '1/2': u'&frac12;',
-    '1/4': u'&frac14;',
-    '3/4': u'&frac34;',
-    'plusmn': u'&plusmn;',
-    'rarr': u'&rarr;',
-    'larr': u'&larr;',
-    'rsquo': u'&rsquo;'
-}
+    'lquote': entity('laquo'),
+    'rquote': entity('raquo'),
+    'mdash': entity('mdash'),
+    'ndash': entity('ndash'),
+    'minus': entity('minus'),
+    'hellip': entity('hellip'),
+    'copy': entity('copy'),
+    #'trade': u'<sup>&trade;</sup>',
+    'apos': unicodedata.lookup('APOSTROPHE'),
+    #'reg': u'<sup><small>&reg;</small></sup>',
+    'multiply': entity('times'),
+    '1/2': entity('frac12'),
+    '1/4': entity('frac14'),
+    '3/4': entity('frac34'),
+    'plusmn': entity('plusmn'),
+    'rarr': entity('rarr'),
+    'larr': entity('larr'),
+    'rsquo': entity('rsquo')
+    }
 
 safeBlocks = {
     u'<pre[^>]*>': u'<\/pre>',
@@ -62,20 +63,22 @@ safeBlocks = {
     u'<script[^>]*>': u'<\/script>',
     u'<!--': u'-->',
     u'<code[^>]*>': u'<\/code>',
-}
+    }
 
 html_tag = u''
 hellip = u'\.{3,5}'
-     
+
 #Слово
 word = u'[a-zA-Zа-яА-Я_]'
-phrase_begin = ur"(?:%s|%s|\n)" %(hellip, word)
+phrase_begin = ur"(?:%s|%s|\d|\n)" %(hellip, word)
 
 #Конец слова
 phrase_end = ur"(?:%s|%s|\n)" %(hellip, word)
 
 #Знаки препинания (троеточие и точка - отдельный случай!)
 punctuation = u'[?!:,;]'
+
+all_punctuation = u'[?!:,;\.%s]' % entity('hellip')
 
 #Аббревиатуры
 abbr = ur'(?:ООО|ОАО|ЗАО|ЧП|ИП|НПФ|НИИ)'
@@ -90,7 +93,37 @@ shortages = u'гн|гжа|гр|г|тов|пос|c|ул|д|пер|м'
 money = u'руб\.|долл\.|евро|у\.е\.'
 counts = u'млн\.|тыс\.'
 
-any_quote = u'(?:%s|%s|%s|%s|&quot;|")' % (sym['lquote'], sym['rquote'], sym['lquote2'], sym['rquote2'])
+# any_quote = u'(?:%s|%s|%s|%s|&quot;|")' % (sym['lquote'], sym['rquote'], sym['lquote2'], sym['rquote2'])
+
+
+known_single_quotes = ( 'apostrophe',
+                        'grave accent',
+                        'grave accent',
+                        'left single quotation mark',
+                        'right single quotation mark',
+                        'modifier letter prime',
+                        'modifier letter grave accent',
+                        'modifier letter acute accent',
+                        'modifier letter vertical line',
+                        'modifier letter turned comma',
+                        'modifier letter apostrophe',
+                        'modifier letter reversed comma',
+                        'armenian apostrophe',
+                        'greek tonos' )
+
+any_single_quote = u'(?:%s)' % ('|'.join(map(unicodedata.lookup, known_single_quotes)))
+
+
+known_quotes = ( 'quotation mark', 
+                 'left double quotation mark',
+                 'right double quotation mark',
+                 'modifier letter double prime',
+                 'double acute accent',
+                 'left-pointing double angle quotation mark',
+                 'right-pointing double angle quotation mark' )
+
+any_quote = u'(?:%s)' % ('|'.join(map(unicodedata.lookup, known_quotes)))
+
 
 brace_open = ur'(?:\(|\[|\{)'
 brace_close = ur'(?:\)|\]|\})'
@@ -144,16 +177,25 @@ rules_strict = compile_ruleset(
     # запятые после "а" и "но"
     (ur'(?<=[^,])(?=\s(?:а|но)\s)', ur','),
     
-)
+    )
 
 rules_symbols = compile_ruleset(
     
-    # лишние знаки.
-    (r'!!!+', r'!!!'),
-    (r'(?<!!)!!(?!!)', '!'),
+    # пробелы между знаками препинания - нафик не нужны
+    (r'(?<=%s)\s+(?=%s)' % (all_punctuation, all_punctuation), ''),
     
-    (r'\?\?\?+', r'???'),
-    (r'(?<!\?)\?\?(?!\?)', r'?'),
+    (r'!{3,}', '!!!'),
+    (r'!!(?!!)', '!'), 
+    
+    (r'\?{3,}', '???'),
+    (r'\?\?(?!\?)', '?'),
+    
+    
+    #(r'!!!+', r'!!!'),
+    #(r'(?<!!)!!(?!!)', '!'),
+    
+    #(r'\?\?\?+', r'???'),
+    #(r'(?<!\?)\?\?(?!\?)', r'?'),
     
     (r';+', r';'),
     (r':+', r':'),
@@ -163,13 +205,13 @@ rules_symbols = compile_ruleset(
     (r'--+', '--'),
     (r'===+', '==='),
     
-    # занятная комбинация
-    (ur'!\?', u'?!'),
+    # убиваем эмобредни
+    (ur'[\?!|!\?]%s+' % all_punctuation, '?!'),
     
     # знаки (c), (r), (tm)
     (ur'\([cс]\)', sym['copy'], re.I), # русский и латинский варианты
-    (ur'\(r\)', sym['reg'], re.I),
-    (ur'\(tm\)', sym['trade'], re.I),
+    # (ur'\(r\)', sym['reg'], re.I),
+    # (ur'\(tm\)', sym['trade'], re.I),
     
     # автор неправ. скорее всего малолетки балуются
     (ur'\.\.+', sym['hellip']),
@@ -180,8 +222,9 @@ rules_symbols = compile_ruleset(
     (ur'\b3/4\b', sym['3/4']),
     
     # какая-то муть с апострофами
-    (ur"(?<=%s)'(?=%s)" % (word, word), sym['rsquo']),
-    (ur"'", sym['apos']),
+    # (ur"(?<=%s)'(?=%s)" % (word, word), sym['rsquo']),
+    # (ur"'", sym['apos']),
+    ( any_single_quote, "'" ),
     
     
     # размеры 10x10, правильный знак + убираем лишние пробелы
@@ -189,15 +232,15 @@ rules_symbols = compile_ruleset(
     
     # +-
     (r'\+-', sym['plusmn']),
-   
+    
     (r'(?<=\S)\s+(?=-+>+|<+-+)', sym['nbsp']), # неразрывные пробелы перед стрелками
     (r'(-+>+|<+-+)\s+(?=\S)', r'\1' + sym['nbsp']), # неразрывные пробелы после стрелок
     
     # стрелки
     (r'<+-+', sym['larr']),
     (r'-+>+', sym['rarr']),
-   
-)
+    
+    )
 
 rules_quotes = compile_ruleset(
     
@@ -216,7 +259,7 @@ rules_quotes = compile_ruleset(
     (sym['rquote'] + any_quote, sym['rquote']+sym['rquote']),
     (any_quote + sym['lquote'], sym['lquote']+sym['lquote']),
     
-)
+    )
 
 rules_braces = compile_ruleset(
     
@@ -228,7 +271,7 @@ rules_braces = compile_ruleset(
     (ur'(?<=%s)\s' % brace_open, ''),
     (ur'\s(?=%s)' % brace_close, ''),
     
-)
+    )
 
 rules_main = compile_ruleset(
     
@@ -243,7 +286,7 @@ rules_main = compile_ruleset(
     
     # оторвать тире от слова
     (r'(?<=\w)-\s+', ' - '),
-                  
+    
     # неразрывные названия организаций и абревиатуры форм собственности
     (ur'(%s)\s+"([^"]+)"' % abbr, nowrap(ur'\1 "\2"')),
     
@@ -265,41 +308,41 @@ rules_main = compile_ruleset(
 
     #Сантиметр в квадрате
     {"pat": u'(\s%s)(\d+)' % metrics, "rep": u'\g<1><sup>\g<2></sup>'},   
-  
- #Знак дефиса или два знака дефиса подряд — на знак длинного тире. 
- # + Нельзя разрывать строку перед тире, например: Знание — сила, Курить — здоровью вредить.
- {"pat": u'(\s+)(--?|—|&mdash;)(?=\s)', "rep": sym['nbsp']+sym['mdash']},
- {"pat": u'(^)(--?|—|&mdash;)(?=\s)', "rep": sym['mdash']},
- 
- # Нельзя оставлять в конце строки предлоги и союзы - убира слеш с i @todo переработать регулярку
- #{"pat": u'(?<=\s|^|\W)(%s)(\s+)' % prepos, "rep": u'\g<1>'+sym['nbsp'], "mod": re.I},
- 
-     # Нельзя отрывать частицы бы, ли, же от предшествующего слова, например: как бы, вряд ли, так же.
-     # {"pat": u"(?<=\S)(\s+)(ж|бы|б|же|ли|ль|либо|или)(?=[\s)!?.])", "rep": sym['nbsp'] + u'\g<2>'},
-     (ur'(?<=\S)\s+(ж|бы|б|же|ли|ль|либо|или)(?!\w)', sym['nbsp'] + r'\1'),
- 
- # # Неразрывный пробел после инициалов.
- {"pat": u'([А-ЯA-Z]\.)\s?([А-ЯA-Z]\.)\s?([А-Яа-яA-Za-z]+)', "rep": u'\g<1>\g<2>%s\g<3>' % sym['nbsp'], "mod": re.S},
- 
- # Сокращения сумм не отделяются от чисел.         
- {"pat": u'(\d+)\s?(%s)' % counts, "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.S},
- 
- #«уе» в денежных суммах
- {"pat": u'(\d+|%s)\s?уеs' % counts, "rep": u'\g<1>%sу.е.' % sym['nbsp']},
     
- # Денежные суммы, расставляя пробелы в нужных местах.
- {"pat": u'(\d+|%s)\s?(%s)' %(counts, money), "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.S},
- 
- #Номер версии программы пишем неразрывно с буковкой v.
- {"pat": u'([vв]\.) ?([0-9])', "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.I},
- {"pat": u'(\w) ([vв]\.)', "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.I},
- 
- 
-     # % не отделяется от числа
-     # {"pat": u'([0-9]+)\s+%', "rep": u'\g<1>%'}
-     {'pat': r'(?<=\d)\s+(?=%)', 'rep': ''}
-     
-)
+    #Знак дефиса или два знака дефиса подряд — на знак длинного тире. 
+    # + Нельзя разрывать строку перед тире, например: Знание — сила, Курить — здоровью вредить.
+    {"pat": u'(\s+)(--?|—|&mdash;)(?=\s)', "rep": sym['nbsp']+sym['mdash']},
+    {"pat": u'(^)(--?|—|&mdash;)(?=\s)', "rep": sym['mdash']},
+    
+    # Нельзя оставлять в конце строки предлоги и союзы - убира слеш с i @todo переработать регулярку
+    #{"pat": u'(?<=\s|^|\W)(%s)(\s+)' % prepos, "rep": u'\g<1>'+sym['nbsp'], "mod": re.I},
+    
+    # Нельзя отрывать частицы бы, ли, же от предшествующего слова, например: как бы, вряд ли, так же.
+    # {"pat": u"(?<=\S)(\s+)(ж|бы|б|же|ли|ль|либо|или)(?=[\s)!?.])", "rep": sym['nbsp'] + u'\g<2>'},
+    (ur'(?<=\S)\s+(ж|бы|б|же|ли|ль|либо|или)(?!\w)', sym['nbsp'] + r'\1'),
+    
+    # # Неразрывный пробел после инициалов.
+    {"pat": u'([А-ЯA-Z]\.)\s?([А-ЯA-Z]\.)\s?([А-Яа-яA-Za-z]+)', "rep": u'\g<1>\g<2>%s\g<3>' % sym['nbsp'], "mod": re.S},
+    
+    # Сокращения сумм не отделяются от чисел.         
+    {"pat": u'(\d+)\s?(%s)' % counts, "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.S},
+    
+    #«уе» в денежных суммах
+    {"pat": u'(\d+|%s)\s?уеs' % counts, "rep": u'\g<1>%sу.е.' % sym['nbsp']},
+    
+    # Денежные суммы, расставляя пробелы в нужных местах.
+    {"pat": u'(\d+|%s)\s?(%s)' %(counts, money), "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.S},
+    
+    #Номер версии программы пишем неразрывно с буковкой v.
+    {"pat": u'([vв]\.) ?([0-9])', "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.I},
+    {"pat": u'(\w) ([vв]\.)', "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.I},
+    
+    
+    # % не отделяется от числа
+    # {"pat": u'([0-9]+)\s+%', "rep": u'\g<1>%'}
+    {'pat': r'(?<=\d)\s+(?=%)', 'rep': ''}
+    
+    )
 
 
 class Typographus:
@@ -308,29 +351,15 @@ class Typographus:
     
     def __init__(self, encoding = None):
         self.encoding = encoding
-   
-   
+        
     def addSafeBlock(self, openTag, closeTag):
         safeBlocks[openTag] = closeTag
-   
-   
-    def setSym(self, sym, entity):
-        sym[sym] = entity
-   
-   
-    def setOpt(self, key, value):
-        options[key] = value
-   
-   
-    def convertE(opt = False):
-        self.setOpt[self.CONVERT_E] = opt
-   
-
+        
     def getSafeBlockPattern(self):
         pattern = u'(';
         for key, value in safeBlocks.items():
             pattern += u"%s.*%s|" % (key, value)
-      
+            
         pattern+= u'<[^>]*[\s][^>]*>)';
         return pattern
     
@@ -347,11 +376,9 @@ class Typographus:
             return key
         
         pattern = self.getSafeBlockPattern() 
-       
-        #string = re.compile(pattern, re.U).sub(replace, string)
+        
         string = re.compile(pattern, re.U|re.S|re.I).sub(replace, string)
         
-        #string = re.compile(ur"</?.*?/?>", re.U).sub(replace, string)
         string = re.compile(ur"</?.*?/?>", re.U|re.S|re.I).sub(replace, string)
         
         return {"replaced": string, "blocks": blocks}
@@ -371,9 +398,9 @@ class Typographus:
         
         string = value["replaced"]
         blocks = value["blocks"]
-      
+        
         string = self.typo_text(string)
-            
+        
         string = self.return_blocks_to_string(string, blocks)
         return string
     
@@ -386,24 +413,24 @@ class Typographus:
             string = reduce(lambda string, rule: rule(string), rule_set, string)
         
         # вложенные кавычки
-        i = 0
-        lev = 5
+        #         i = 0
+        #         lev = 5
         
-        matchLeftQuotes = re.compile(u'«(?:[^»]*?)«')#мачит две соседние левые елочки
-        matchRightQuotes = re.compile(u'»(?:[^«]*?)»')
+#         matchLeftQuotes = re.compile(u'«(?:[^»]*?)«')#мачит две соседние левые елочки
+#         matchRightQuotes = re.compile(u'»(?:[^«]*?)»')
         
-        replaceOuterQuotes = re.compile(u'«([^»]*?)«(.*?)»')
-        replaceRightQuotes = re.compile(u'»([^«]*?)»')
-        while  i<5 and matchLeftQuotes.match(string):
-            i+=1
-            rep = u'%s\g<1>%s\g<2>%s' % (q['lq'], sym['lquote2'], sym['rquote2'])
-            string = replaceOuterQuotes.sub(rep, string)
-            i+=1
-            while i<lev and matchRightQuotes.match(string):
-                i+=1
-                string = replaceRightQuotes.sub(sym['rquote2'] + u'\g<1>%s' % q['rq'], string);
+#         replaceOuterQuotes = re.compile(u'«([^»]*?)«(.*?)»')
+#         replaceRightQuotes = re.compile(u'»([^«]*?)»')
+#         while  i<5 and matchLeftQuotes.match(string):
+#             i+=1
+#             rep = u'%s\g<1>%s\g<2>%s' % (q['lq'], sym['lquote2'], sym['rquote2'])
+#             string = replaceOuterQuotes.sub(rep, string)
+#             i+=1
+#             while i<lev and matchRightQuotes.match(string):
+#                 i+=1
+#                 string = replaceRightQuotes.sub(sym['rquote2'] + u'\g<1>%s' % q['rq'], string);
         
-        string = string.replace(u'<nowrap>', sym['lnowrap']).replace(u'</nowrap>', sym['rnowrap'])
+#         string = string.replace(u'<nowrap>', sym['lnowrap']).replace(u'</nowrap>', sym['rnowrap'])
         
         return string.strip()
 
