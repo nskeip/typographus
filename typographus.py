@@ -1,68 +1,43 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-"""
-Типограф версия 0.1 волевой выпуск
-Страница проекта: http://code.google.com/p/typo-py/
-
-Построено на основе PHP версии http://rmcreative.ru/blog/post/tipograf
-Обладает схожим набором функционала.
-Отсутствие поддержки Lookahead в Python regEx заставило автора кода
-придумать иной механизм замены. Результат получился вполне рабочим.
-Код написан почти в соответствии с PEP8.
-Файл testTypographus.py содержит юнит тесты функционала, который был необходим
-в проекте автора (для него же и писался типограф).
-
-Автор: Кононученко Игорь
-Почта: kigorw@gmail.com
-Сайт: http://www.kigorw.com/
-
-Разрешаю менять данный код как угодно, просить меня исправить ошибки
-и ссылаться на страницу проекта.
-
-Я ищу людей для совместной работы!
-"""
 
 import re, htmlentitydefs, unicodedata
 
-__all__ = ('Typographus', 'Rule', 'typo')
+__all__ = ('Typographus', 'typo')
 
 def entity(name):
     return unichr(htmlentitydefs.name2codepoint[name])
 
 
 sym = {
-    'nbsp': entity('nbsp'),
-
-    'lnowrap': u'<span style="white-space: nowrap;">',
-    'rnowrap': u'</span>',
-
-    'lquote': entity('laquo'),
-    'rquote': entity('raquo'),
-    'mdash': entity('mdash'),
-    'ndash': entity('ndash'),
-    'minus': entity('minus'),
-    'hellip': entity('hellip'),
-    'copy': entity('copy'),
-    #'trade': u'<sup>&trade;</sup>',
-    'apos': unicodedata.lookup('APOSTROPHE'),
-    #'reg': u'<sup><small>&reg;</small></sup>',
+    'nbsp':     entity('nbsp'),
+    'lquote':   entity('laquo'),
+    'rquote':   entity('raquo'),
+    'mdash':    entity('mdash'),
+    'ndash':    entity('ndash'),
+    'minus':    entity('minus'),
+    'hellip':   entity('hellip'),
+    'copy':     entity('copy'),
+    'trade':    entity('trade'),
+    'apos':     "'",
+    'reg':      entity('reg'),
     'multiply': entity('times'),
-    '1/2': entity('frac12'),
-    '1/4': entity('frac14'),
-    '3/4': entity('frac34'),
-    'plusmn': entity('plusmn'),
-    'rarr': entity('rarr'),
-    'larr': entity('larr'),
-    'rsquo': entity('rsquo')
+    '1/2':      entity('frac12'),
+    '1/4':      entity('frac14'),
+    '3/4':      entity('frac34'),
+    'plusmn':   entity('plusmn'),
+    'rarr':     entity('rarr'),
+    'larr':     entity('larr'),
+    'rsquo':    entity('rsquo'),
+    'rsaquo':   entity('rsaquo'),
+    'lsaquo':   entity('lsaquo'),
     }
 
 safeBlocks = {
-    u'<pre[^>]*>': u'<\/pre>',
-    u'<style[^>]*>': u'<\/style>',
-    u'<script[^>]*>': u'<\/script>',
-    u'<!--': u'-->',
-    u'<code[^>]*>': u'<\/code>',
+    '<pre[^>]*>':    '<\/pre>',
+    '<style[^>]*>':  '<\/style>',
+    '<script[^>]*>': '<\/script>',
+    '<!--':          '-->',
+    '<code[^>]*>':   '<\/code>',
     }
 
 html_tag = u''
@@ -128,9 +103,12 @@ any_quote = u'(?:%s)' % ('|'.join(map(unicodedata.lookup, known_quotes)))
 brace_open = ur'(?:\(|\[|\{)'
 brace_close = ur'(?:\)|\]|\})'
 
+arrow_left = '[<|%s]' % sym['lsaquo']
+arrow_right = '[>|%s]' % sym['rsaquo']
+
 def nowrap(string):
-    return u'<nowrap>%s</nowrap>' % string
-    #return sym['lnowrap'] + string + sym['rnowrap']
+    return re.sub(r'\s', sym['nbsp'], string)
+
 
 class Rule:
 
@@ -179,25 +157,19 @@ rules_strict = compile_ruleset(
     
     )
 
+
 rules_symbols = compile_ruleset(
     
     # пробелы между знаками препинания - нафик не нужны
     (r'(?<=%s)\s+(?=%s)' % (all_punctuation, all_punctuation), ''),
     
-    (r'!{3,}', '!!!'),
-    (r'!!(?!!)', '!'), 
+    (r'!{3,}', '!!!'), # больше 3 заменяем на 3
+    (r'!!(?!!)', '!'), # 2 меняем на 1
     
-    (r'\?{3,}', '???'),
+    (r'\?{3,}', '???'), # аналогично
     (r'\?\?(?!\?)', '?'),
     
-    
-    #(r'!!!+', r'!!!'),
-    #(r'(?<!!)!!(?!!)', '!'),
-    
-    #(r'\?\?\?+', r'???'),
-    #(r'(?<!\?)\?\?(?!\?)', r'?'),
-    
-    (r';+', r';'),
+    (r';+', r';'), # эти знаки строго по одному
     (r':+', r':'),
     (r',+', r','),
     
@@ -210,8 +182,10 @@ rules_symbols = compile_ruleset(
     
     # знаки (c), (r), (tm)
     (ur'\([cс]\)', sym['copy'], re.I), # русский и латинский варианты
-    # (ur'\(r\)', sym['reg'], re.I),
-    # (ur'\(tm\)', sym['trade'], re.I),
+    (ur'\(r\)', sym['reg'], re.I),
+    (ur'\(tm\)', sym['trade'], re.I),
+    
+    (r'\s+(?=[%s|%s|%s])' % (sym['trade'], sym['copy'], sym['reg']), ''),
     
     # автор неправ. скорее всего малолетки балуются
     (ur'\.\.+', sym['hellip']),
@@ -224,7 +198,7 @@ rules_symbols = compile_ruleset(
     # какая-то муть с апострофами
     # (ur"(?<=%s)'(?=%s)" % (word, word), sym['rsquo']),
     # (ur"'", sym['apos']),
-    ( any_single_quote, "'" ),
+    (any_single_quote, sym['rsquo']),
     
     
     # размеры 10x10, правильный знак + убираем лишние пробелы
@@ -233,8 +207,8 @@ rules_symbols = compile_ruleset(
     # +-
     (r'\+-', sym['plusmn']),
     
-    (r'(?<=\S)\s+(?=-+>+|<+-+)', sym['nbsp']), # неразрывные пробелы перед стрелками
-    (r'(-+>+|<+-+)\s+(?=\S)', r'\1' + sym['nbsp']), # неразрывные пробелы после стрелок
+    (r'(?<=\S)\s+(?=-+%s+|%s+-+)' % (arrow_right, arrow_left), sym['nbsp']), # неразрывные пробелы перед стрелками
+    (r'(-+%s+|%s+-+)\s+(?=\S)' % (arrow_right, arrow_left), r'\1' + sym['nbsp']), # неразрывные пробелы после стрелок
     
     # стрелки
     (r'<+-+', sym['larr']),
@@ -305,14 +279,14 @@ rules_main = compile_ruleset(
     # неразрывный пробел между цифрой и единицей измерения <- и это бред тоже
     # {"pat": u'([0-9]+)\s*(%s)' % metrics, "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.S},
     (ur'(\d+)\s*(%s)\.?' % metrics, r'\1%s\2' % sym['nbsp'], re.S),
-
-    #Сантиметр в квадрате
-    {"pat": u'(\s%s)(\d+)' % metrics, "rep": u'\g<1><sup>\g<2></sup>'},   
     
-    #Знак дефиса или два знака дефиса подряд — на знак длинного тире. 
+    # Сантиметр в квадрате
+    # (u'(\s%s)(\d+)' % metrics, u'\g<1><sup>\g<2></sup>'),
+    
+    # Знак дефиса или два знака дефиса подряд — на знак длинного тире. 
     # + Нельзя разрывать строку перед тире, например: Знание — сила, Курить — здоровью вредить.
-    {"pat": u'(\s+)(--?|—|&mdash;)(?=\s)', "rep": sym['nbsp']+sym['mdash']},
-    {"pat": u'(^)(--?|—|&mdash;)(?=\s)', "rep": sym['mdash']},
+    (u'(\s+)(--?|—|&mdash;)(?=\s)', sym['nbsp'] + sym['mdash']),
+    (u'(^)(--?|—|&mdash;)(?=\s)', sym['mdash']),
     
     # Нельзя оставлять в конце строки предлоги и союзы - убира слеш с i @todo переработать регулярку
     #{"pat": u'(?<=\s|^|\W)(%s)(\s+)' % prepos, "rep": u'\g<1>'+sym['nbsp'], "mod": re.I},
@@ -322,25 +296,25 @@ rules_main = compile_ruleset(
     (ur'(?<=\S)\s+(ж|бы|б|же|ли|ль|либо|или)(?!\w)', sym['nbsp'] + r'\1'),
     
     # # Неразрывный пробел после инициалов.
-    {"pat": u'([А-ЯA-Z]\.)\s?([А-ЯA-Z]\.)\s?([А-Яа-яA-Za-z]+)', "rep": u'\g<1>\g<2>%s\g<3>' % sym['nbsp'], "mod": re.S},
+    (u'([А-ЯA-Z]\.)\s?([А-ЯA-Z]\.)\s?([А-Яа-яA-Za-z]+)', u'\g<1>\g<2>%s\g<3>' % sym['nbsp'], re.S),
     
     # Сокращения сумм не отделяются от чисел.         
-    {"pat": u'(\d+)\s?(%s)' % counts, "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.S},
+    (u'(\d+)\s?(%s)' % counts, u'\g<1>%s\g<2>' % sym['nbsp'], re.S),
     
     #«уе» в денежных суммах
-    {"pat": u'(\d+|%s)\s?уеs' % counts, "rep": u'\g<1>%sу.е.' % sym['nbsp']},
+    (u'(\d+|%s)\s?уеs' % counts, u'\g<1>%sу.е.' % sym['nbsp']),
     
     # Денежные суммы, расставляя пробелы в нужных местах.
-    {"pat": u'(\d+|%s)\s?(%s)' %(counts, money), "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.S},
+    (u'(\d+|%s)\s?(%s)' %(counts, money), u'\g<1>%s\g<2>' % sym['nbsp'], re.S),
     
-    #Номер версии программы пишем неразрывно с буковкой v.
-    {"pat": u'([vв]\.) ?([0-9])', "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.I},
-    {"pat": u'(\w) ([vв]\.)', "rep": u'\g<1>%s\g<2>' % sym['nbsp'], "mod": re.I},
+    # Номер версии программы пишем неразрывно с буковкой v.
+    (u'([vв]\.) ?([0-9])', u'\g<1>%s\g<2>' % sym['nbsp'], re.I),
+    (u'(\w) ([vв]\.)', u'\g<1>%s\g<2>' % sym['nbsp'], re.I),
     
     
     # % не отделяется от числа
     # {"pat": u'([0-9]+)\s+%', "rep": u'\g<1>%'}
-    {'pat': r'(?<=\d)\s+(?=%)', 'rep': ''}
+    (r'(?<=\d)\s+(?=%)', ''),
     
     )
 
@@ -390,7 +364,7 @@ class Typographus:
     
     def process(self, string):
         
-        if type(string) is not unicode:
+        if not isinstance(string, unicode):
             raise Exception, u'only unicode instances allowed for Typographus'
         
         
