@@ -9,7 +9,7 @@ def entity(name):
 
 
 sym = {
-    'nbsp':     entity('nbsp'),
+    'nbsp':     'NBSP', #entity('nbsp'),
     'lquote':   entity('laquo'),
     'rquote':   entity('raquo'),
     'mdash':    entity('mdash'),
@@ -40,15 +40,17 @@ safeBlocks = {
     '<code[^>]*>':   '<\/code>',
     }
 
+space = '[\s|%s]' % sym['nbsp']
+
 html_tag = u''
 hellip = u'\.{3,5}'
 
 #Слово
 word = u'[a-zA-Zа-яА-Я_]'
-phrase_begin = ur"(?:%s|%s|\d|\n)" %(hellip, word)
+phrase_begin = ur"(?:%s|%s|\d|\n)" % (hellip, word)
 
 #Конец слова
-phrase_end = ur"(?:%s|%s|\n)" %(hellip, word)
+phrase_end = ur"(?:%s|%s|\n)" % (hellip, word)
 
 #Знаки препинания (троеточие и точка - отдельный случай!)
 punctuation = u'[?!:,;]'
@@ -59,8 +61,9 @@ all_punctuation = u'[?!:,;\.%s]' % entity('hellip')
 abbr = ur'(?:ООО|ОАО|ЗАО|ЧП|ИП|НПФ|НИИ)'
 
 #Предлоги и союзы
-prepos = u'а|в|во|вне|и|или|к|о|с|у|о|со|об|обо|от|ото|то|на|не|ни|но|из|изо|за|уж|на|по|под|подо|пред|предо|'        
-prepos +=u'про|над|надо|как|без|безо|что|да|для|до|там|ещё|их|или|ко|меж|между|перед|передо|около|через|сквозь|для|при|я'
+prepos = u'а|в|во|вне|и|или|к|о|с|у|о|со|об|обо|от|ото|то|на|не|ни|но|из|изо|за|уж|на|по|под|подо|пред|предо|' \
+    + u'про|над|надо|как|без|безо|что|да|для|до|там|ещё|их|или|ко|меж|между|перед|передо|около|через|сквозь|для|при|я'
+
 metrics = u'мм|см|м|км|кг|б|кб|мб|гб|dpi|px' # с граммами сложнее - либо граммы либо города
 
 shortages = u'гн|гжа|гр|г|тов|пос|c|ул|д|пер|м'
@@ -107,7 +110,8 @@ arrow_left = '[<|%s]' % sym['lsaquo']
 arrow_right = '[>|%s]' % sym['rsaquo']
 
 def nowrap(string):
-    return re.sub(r'\s', sym['nbsp'], string)
+    return string
+    # return re.sub(r'\s', sym['nbsp'], string)
 
 
 class Rule:
@@ -150,7 +154,7 @@ def compile_ruleset(*ruleset):
 rules_strict = compile_ruleset(
     
     # много пробелов или табуляций -> один пробел
-    (ur'\s+', u' '),
+    (r'%s+' % space, u' '),
     
     # запятые после "а" и "но"
     (ur'(?<=[^,])(?=\s(?:а|но)\s)', ur','),
@@ -161,13 +165,13 @@ rules_strict = compile_ruleset(
 rules_symbols = compile_ruleset(
     
     # пробелы между знаками препинания - нафик не нужны
-    (r'(?<=%s)\s+(?=%s)' % (all_punctuation, all_punctuation), ''),
+    (r'(?<=%s)%s+(?=%s)' % (all_punctuation, space, all_punctuation), ''),
     
     (r'!{3,}', '!!!'), # больше 3 заменяем на 3
-    (r'!!(?!!)', '!'), # 2 меняем на 1
+    (r'(?<!!)!!(?!!)', '!'), # 2 меняем на 1
     
     (r'\?{3,}', '???'), # аналогично
-    (r'\?\?(?!\?)', '?'),
+    (r'(?<!\?)\?\?(?!\?)', '?'),
     
     (r';+', r';'), # эти знаки строго по одному
     (r':+', r':'),
@@ -178,8 +182,9 @@ rules_symbols = compile_ruleset(
     (r'===+', '==='),
     
     # убиваем эмобредни
-    (ur'[\?!|!\?]%s+' % all_punctuation, '?!'),
-    
+    (r'!+\?+[!|\?]*', '?!'),
+    (r'\?+!+[!|\?]*', '?!'),
+
     # знаки (c), (r), (tm)
     (ur'\([cс]\)', sym['copy'], re.I), # русский и латинский варианты
     (ur'\(r\)', sym['reg'], re.I),
@@ -245,6 +250,9 @@ rules_braces = compile_ruleset(
     (ur'(?<=%s)\s' % brace_open, ''),
     (ur'\s(?=%s)' % brace_close, ''),
     
+    # между закрывающей скобкой и знаком препинания не нужен пробел
+    (r'(?<=%s)%s(?=%s)' % (brace_close, space, all_punctuation), ''),
+    
     )
 
 rules_main = compile_ruleset(
@@ -281,7 +289,7 @@ rules_main = compile_ruleset(
     (ur'(\d+)\s*(%s)\.?' % metrics, r'\1%s\2' % sym['nbsp'], re.S),
     
     # Сантиметр в квадрате
-    # (u'(\s%s)(\d+)' % metrics, u'\g<1><sup>\g<2></sup>'),
+    # (u'(\s%s)(\d+)' % metr=ics, u'\g<1><sup>\g<2></sup>'),
     
     # Знак дефиса или два знака дефиса подряд — на знак длинного тире. 
     # + Нельзя разрывать строку перед тире, например: Знание — сила, Курить — здоровью вредить.
