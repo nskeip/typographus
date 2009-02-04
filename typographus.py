@@ -9,7 +9,7 @@ def entity(name):
 
 
 sym = {
-    'nbsp':     'NBSP', #entity('nbsp'),
+    'nbsp':     entity('nbsp'),
     'lquote':   entity('laquo'),
     'rquote':   entity('raquo'),
     'mdash':    entity('mdash'),
@@ -30,6 +30,7 @@ sym = {
     'rsquo':    entity('rsquo'),
     'rsaquo':   entity('rsaquo'),
     'lsaquo':   entity('lsaquo'),
+    ':)':       ':)',
     }
 
 safeBlocks = {
@@ -43,7 +44,7 @@ safeBlocks = {
 space = '[\s|%s]' % sym['nbsp']
 
 html_tag = u''
-hellip = u'\.{3,5}'
+hellip = u'\.{3,}'
 
 #Слово
 word = u'[a-zA-Zа-яА-Я_]'
@@ -61,8 +62,9 @@ all_punctuation = u'[?!:,;\.%s]' % entity('hellip')
 abbr = ur'(?:ООО|ОАО|ЗАО|ЧП|ИП|НПФ|НИИ)'
 
 #Предлоги и союзы
-prepos = u'а|в|во|вне|и|или|к|о|с|у|о|со|об|обо|от|ото|то|на|не|ни|но|из|изо|за|уж|на|по|под|подо|пред|предо|' \
-    + u'про|над|надо|как|без|безо|что|да|для|до|там|ещё|их|или|ко|меж|между|перед|передо|около|через|сквозь|для|при|я'
+prepos = u'а|в|во|вне|и|или|к|о|с|у|о|со|об|обо|от|ото|то|на|не|ни|но|из|изо|за|уж|на|по|под' \
+    + u'|подо|пред|предо|про|над|надо|как|без|безо|что|да|для|до|там|ещё|их|или|ко|меж|между' \
+    + u'|перед|передо|около|через|сквозь|для|при|я'
 
 metrics = u'мм|см|м|км|кг|б|кб|мб|гб|dpi|px' # с граммами сложнее - либо граммы либо города
 
@@ -74,6 +76,8 @@ counts = u'млн\.|тыс\.'
 # any_quote = u'(?:%s|%s|%s|%s|&quot;|")' % (sym['lquote'], sym['rquote'], sym['lquote2'], sym['rquote2'])
 
 
+
+# fuck unicode specs
 known_single_quotes = ( 'apostrophe',
                         'grave accent',
                         'grave accent',
@@ -110,8 +114,8 @@ arrow_left = '[<|%s]' % sym['lsaquo']
 arrow_right = '[>|%s]' % sym['rsaquo']
 
 def nowrap(string):
-    return string
-    # return re.sub(r'\s', sym['nbsp'], string)
+    #return string
+    return re.sub(r'\s', sym['nbsp'], string)
 
 
 class Rule:
@@ -193,7 +197,7 @@ rules_symbols = compile_ruleset(
     (r'\s+(?=[%s|%s|%s])' % (sym['trade'], sym['copy'], sym['reg']), ''),
     
     # автор неправ. скорее всего малолетки балуются
-    (ur'\.\.+', sym['hellip']),
+    (ur'\.{2,}', sym['hellip']),
     
     # спецсимволы для 1/2 1/4 3/4
     (ur'\b1/2\b', sym['1/2']),
@@ -274,8 +278,8 @@ rules_main = compile_ruleset(
     
     # нельзя отрывать сокращение от относящегося к нему слова.
     # например: тов. Сталин, г. Воронеж
-    # ставит пробел, если его нет. и точку тоже ставит на всякий случай. :)  
-    (ur'([^\w][%s])\.?\s*(?=[А-Я\d])' % shortages, r'\1.%s' % sym['nbsp']),
+    # ставит пробел, если его нет. и точку тоже ставит на всякий случай ??????. :)  
+    (ur'([^\w][%s])(\.?)\s*(?=[А-Я\d])' % shortages, r'\1\2%s' % sym['nbsp']),
     
     # не отделять стр., с. и т.д. от номера.
     (ur'([^\w][стр|табл|рис|илл])\.?\s*(?=\d+)', r'\1.%s' % sym['nbsp'], re.S | re.I),
@@ -326,6 +330,19 @@ rules_main = compile_ruleset(
     
     )
 
+
+rules_smiles = compile_ruleset(
+    
+    (r'[:|;|-]*?\){3,}', sym[':)']),
+    
+)
+
+
+final_cleanup = compile_ruleset(
+    
+    (r'\s(?=%s)' % all_punctuation, ''),
+    
+)
 
 class Typographus:
     
@@ -391,7 +408,8 @@ class Typographus:
         if (string.strip() == ''):
             return ''
         
-        for rule_set in (rules_strict, rules_main, rules_symbols, rules_braces, rules_quotes):
+        for rule_set in (rules_strict, rules_main, rules_symbols, rules_braces,
+                         rules_quotes, rules_smiles, final_cleanup):
             string = reduce(lambda string, rule: rule(string), rule_set, string)
         
         # вложенные кавычки
