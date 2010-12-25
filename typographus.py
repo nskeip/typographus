@@ -73,8 +73,11 @@ all_punctuation = u'[?!:,;\.%s]' % entity('hellip')
 abbr = ur'(?:ООО|ОАО|ЗАО|ЧП|ИП|НПФ|НИИ)'
 
 #Предлоги и союзы
-prepos = u'а|в|во|вне|и|или|к|о|с|у|о|со|об|обо|от|ото|то|на|не|ни|но|из|изо|за|уж|на|по|под' \
-    + u'|подо|пред|предо|про|над|надо|как|без|безо|что|да|для|до|там|ещё|их|или|ко|меж|между' \
+prepos = u'а|в|во|вне|и|или|к|о|с|у|о|со' \
+    + u'|об|обо|от|ото|то|на|не|ни|но|из' \
+    + u'|изо|за|уж|на|по|под|подо|пред|предо' \
+    + u'|про|над|надо|как|без|безо|что|да' \
+    + u'|для|до|там|ещё|их|или|ко|меж|между' \
     + u'|перед|передо|около|через|сквозь|для|при|я'
 
 metrics = u'мм|см|м|км|кг|б|кб|мб|гб|dpi|px'  # с граммами сложнее - либо граммы либо города
@@ -158,7 +161,7 @@ def compile_ruleset(*ruleset):
             if 'mod' in rule_desc:
                 flag = rule_desc['mod']
         else:
-            raise Exception, 'unknown rule: %s' % repr(rule_desc)
+            raise Exception('unknown rule: %s' % repr(rule_desc))
         result.append(Rule(pattern, replacement, flag))
     return result
 
@@ -179,13 +182,13 @@ rules_symbols = compile_ruleset(
     # пробелы между знаками препинания - нафик не нужны
     (r'(?<=%s)%s+(?=%s)' % (all_punctuation, space, all_punctuation), ''),
 
-    (r'!{3,}', '!!!'), # больше 3 заменяем на 3
-    (r'(?<!!)!!(?!!)', '!'), # 2 меняем на 1
+    (r'!{3,}', '!!!'),  # больше 3 заменяем на 3
+    (r'(?<!!)!!(?!!)', '!'),  # 2 меняем на 1
 
-    (r'\?{3,}', '???'), # аналогично
+    (r'\?{3,}', '???'),  # аналогично
     (r'(?<!\?)\?\?(?!\?)', '?'),
 
-    (r';+', r';'), # эти знаки строго по одному
+    (r';+', r';'),  # эти знаки строго по одному
     (r':+', r':'),
     (r',+', r','),
 
@@ -198,7 +201,7 @@ rules_symbols = compile_ruleset(
     (r'\?+!+[!|\?]*', '?!'),
 
     # знаки (c), (r), (tm)
-    (ur'\([cс]\)', sym['copy'], re.I), # русский и латинский варианты
+    (ur'\([cс]\)', sym['copy'], re.I),  # русский и латинский варианты
     (ur'\(r\)', sym['reg'], re.I),
     (ur'\(tm\)', sym['trade'], re.I),
 
@@ -224,8 +227,8 @@ rules_symbols = compile_ruleset(
     # +-
     (r'\+-', sym['plusmn']),
 
-    (r'(?<=\S)\s+(?=-+%s+|%s+-+)' % (arrow_right, arrow_left), sym['nbsp']), # неразрывные пробелы перед стрелками
-    (r'(-+%s+|%s+-+)\s+(?=\S)' % (arrow_right, arrow_left), r'\1' + sym['nbsp']), # неразрывные пробелы после стрелок
+    (r'(?<=\S)\s+(?=-+%s+|%s+-+)' % (arrow_right, arrow_left), sym['nbsp']),  # неразрывные пробелы перед стрелками
+    (r'(-+%s+|%s+-+)\s+(?=\S)' % (arrow_right, arrow_left), r'\1' + sym['nbsp']),  # неразрывные пробелы после стрелок
 
     # стрелки
     (r'<+-+', sym['larr']),
@@ -353,6 +356,7 @@ final_cleanup = compile_ruleset(
 
 )
 
+
 class Typographus:
 
     encoding = None
@@ -364,16 +368,16 @@ class Typographus:
         safeBlocks[openTag] = closeTag
 
     def getSafeBlockPattern(self):
-        pattern = u'(';
+        pattern = u'('
         for key, value in safeBlocks.items():
             pattern += u"%s.*%s|" % (key, value)
 
-        pattern += u'<[^>]*[\s][^>]*>)';
+        pattern += u'<[^>]*[\s][^>]*>)'
         return pattern
-
 
     def removeRedundantBlocks(self, string):
         blocks = {}
+
         def replace(m):
             value = m.group()
             if(len(value) == 3):
@@ -399,11 +403,9 @@ class Typographus:
     def process(self, string):
 
         if not isinstance(string, unicode):
-            raise Exception, u'only unicode instances allowed for Typographus'
-
+            raise Exception(u'only unicode instances allowed for Typographus')
 
         value = self.removeRedundantBlocks(string)
-
         string = value["replaced"]
         blocks = value["blocks"]
 
@@ -425,6 +427,7 @@ class Typographus:
         string = string.replace(u'<nowrap>', sym['lnowrap']).replace(u'</nowrap>', sym['rnowrap'])
 
         return string.strip()
+
 
 def typo(string):
     return Typographus().process(string)
