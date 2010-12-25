@@ -7,14 +7,8 @@ Python typograph for Russian
 """
 
 import re
-import htmlentitydefs
 
 __all__ = ('Typographus', 'typo')
-
-
-def entity(name):
-    return unichr(htmlentitydefs.name2codepoint[name])
-
 
 sym = {
     'nbsp':     '&nbsp;',
@@ -51,7 +45,7 @@ safeBlocks = {
     '<code[^>]*>':   '<\/code>',
     }
 
-space = '[\s|%s]' % entity('nbsp')
+space = '[\s|%s]' % u'\xa0'  # u'\xa0' htmlentitydefs.name2codepoint['nbsp']
 
 html_tag = u''
 hellip = u'\.{3,}'
@@ -66,7 +60,7 @@ phrase_end = ur"(?:%s|%s|\n)" % (hellip, word)
 #Знаки препинания (троеточие и точка - отдельный случай!)
 punctuation = u'[?!:,;]'
 
-all_punctuation = u'[?!:,;\.%s]' % entity('hellip')
+all_punctuation = u'[?!:,;\.%s]' % u'\u2026'  # u'\u2026' htmlentitydefs.name2codepoint['hellip']
 
 #Аббревиатуры
 abbr = ur'(?:ООО|ОАО|ЗАО|ЧП|ИП|НПФ|НИИ)'
