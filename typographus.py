@@ -87,9 +87,25 @@ shortages = u'гн|гжа|гр|г|тов|пос|c|ул|д|пер|м'
 money = u'руб\.|долл\.|евро|у\.е\.'
 counts = u'млн\.|тыс\.'
 
-# fuck unicode specs
+"""
+this:
+    known_quotes = ('quotation mark',
+                     'left double quotation mark',
+                     'right double quotation mark',
+                     'modifier letter double prime',
+                     'double acute accent',
+                     'left-pointing double angle quotation mark',
+                     'right-pointing double angle quotation mark')
+
+    any_quote = u'(?:%s)' % ('|'.join(map(unicodedata.lookup, known_quotes)))
+is an equivalent to the code line below
+(but we don't have to count it on every import):
+"""
+any_quote = u'(?:"|\u201c|\u201d|\u02ba|\u02dd|\xab|\xbb)'
+
+"""
+any_single_quote: the same thing as above
 known_single_quotes = ('apostrophe',
-                        'grave accent',
                         'grave accent',
                         'left single quotation mark',
                         'right single quotation mark',
@@ -102,20 +118,10 @@ known_single_quotes = ('apostrophe',
                         'modifier letter reversed comma',
                         'armenian apostrophe',
                         'greek tonos')
+...
 
-any_single_quote = u'(?:%s)' % ('|'.join(map(unicodedata.lookup, known_single_quotes)))
-
-
-known_quotes = ('quotation mark',
-                 'left double quotation mark',
-                 'right double quotation mark',
-                 'modifier letter double prime',
-                 'double acute accent',
-                 'left-pointing double angle quotation mark',
-                 'right-pointing double angle quotation mark')
-
-any_quote = u'(?:%s)' % ('|'.join(map(unicodedata.lookup, known_quotes)))
-
+"""
+any_single_quote = u"(?:'|`|\u2018|\u2019|\u02b9|\u02cb|\u02ca|\u02c8|\u02bb|\u02bc|\u02bd|\u055a|\u0384)"
 
 brace_open = ur'(?:\(|\[|\{)'
 brace_close = ur'(?:\)|\]|\})'
