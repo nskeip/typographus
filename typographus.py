@@ -8,7 +8,6 @@ Python typograph for Russian
 
 import re
 import htmlentitydefs
-import unicodedata
 
 __all__ = ('Typographus', 'typo')
 
