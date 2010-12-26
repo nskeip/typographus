@@ -24,8 +24,6 @@ class TestPunctuation(unittest.TestCase):
 	
     def testmath(self):
         self.assert_typo(u'5+6&minus;7&plusmn;8', u'5+6-7+-8')
-        self.assert_typo(u'===', u'============')
-        self.assert_typo(u'++', u'+++++++++++')
     
     def testshortening(self):
         self.assert_typo(u'тов.&nbsp;Сталин', u'тов Сталин')
@@ -36,22 +34,20 @@ class TestPunctuation(unittest.TestCase):
     
     def testrepeats(self):
         self.assert_typo(u'!!!', u'!!!!!!!!!!!!!!')
-        self.assert_typo(u'!', u'!!')
         self.assert_typo(u'???', u'??????????')
-        self.assert_typo(u'?', u'??')
-    
-    def testarrows(self):
-        self.assert_typo(u'&rarr;', u'----->>>')
-        self.assert_typo(u'&larr;', u'<<<-------')
-        self.assert_typo(u'сюда&nbsp;&larr;', u'сюда <<--')
-        self.assert_typo(u'туда&nbsp;&rarr;', u'туда ---->>>>>')
-    
+
     def testmultiply(self):
         self.assert_typo(u'6&times;7', u'6x7')
     
     def testnowrap(self):
         self.assert_typo(u'<span style="white-space: nowrap;">ООО &laquo;Рога и Копыта&raquo;</span>',
                          u'ООО "Рога и Копыта"')
+
+    # by ns-keip
+    def test_copy(self):
+        self.assert_typo('&copy;', u'(c)')  # En
+        self.assert_typo('&copy;', u'(с)')  # Ru (o tempora! o mores!)
+        self.assert_typo('&copy; Vasily Pupkin', u' (c) Vasily Pupkin')
     
 if __name__ == '__main__':
     unittest.main()

@@ -178,22 +178,16 @@ rules_strict = compile_ruleset(
 
 rules_symbols = compile_ruleset(
 
-    # пробелы между знаками препинания - нафик не нужны
+    # пробелы между знаками препинания - не нужны
     (r'(?<=%s)%s+(?=%s)' % (all_punctuation, space, all_punctuation), ''),
 
     (r'!{3,}', '!!!'),  # больше 3 заменяем на 3
-    (r'(?<!!)!!(?!!)', '!'),  # 2 меняем на 1
 
     (r'\?{3,}', '???'),  # аналогично
-    (r'(?<!\?)\?\?(?!\?)', '?'),
-
+    
     (r';+', r';'),  # эти знаки строго по одному
     (r':+', r':'),
     (r',+', r','),
-
-    (r'\+\++', '++'),
-    (r'--+', '--'),
-    (r'===+', '==='),
 
     # убиваем эмобредни
     (r'!+\?+[!|\?]*', '?!'),
@@ -228,10 +222,6 @@ rules_symbols = compile_ruleset(
 
     (r'(?<=\S)\s+(?=-+%s+|%s+-+)' % (arrow_right, arrow_left), sym['nbsp']),  # неразрывные пробелы перед стрелками
     (r'(-+%s+|%s+-+)\s+(?=\S)' % (arrow_right, arrow_left), r'\1' + sym['nbsp']),  # неразрывные пробелы после стрелок
-
-    # стрелки
-    (r'<+-+', sym['larr']),
-    (r'-+>+', sym['rarr']),
 
     )
 
@@ -288,8 +278,6 @@ rules_main = compile_ruleset(
 
     # нельзя отрывать сокращение от относящегося к нему слова.
     # например: тов. Сталин, г. Воронеж
-    # ставит пробел, если его нет. и точку тоже ставит на всякий случай ??????. :)
-    #(ur'([^\w][%s])(\.?)\s*(?=[А-Я\d])' % shortages, r'\1\2%s' % sym['nbsp']),
     (ur'([^\w][%s])(\.?)\s*(?=[А-Я\d])' % shortages, r'\1.%s\2' % sym['nbsp']),
 
     # не отделять стр., с. и т.д. от номера.
@@ -340,13 +328,6 @@ rules_main = compile_ruleset(
     (r'(?<=\d)\s+(?=%)', ''),
 
     )
-
-
-rules_smiles = compile_ruleset(
-
-    (r'[:|;|-]*?\){3,}', sym[':)']),
-
-)
 
 
 final_cleanup = compile_ruleset(
@@ -419,7 +400,7 @@ class Typographus:
             return ''
 
         for rule_set in (rules_strict, rules_main, rules_symbols, rules_braces,
-                         rules_quotes, rules_smiles, final_cleanup):
+                         rules_quotes, final_cleanup):
             for rule in rule_set:
                 string = rule(string)
 
